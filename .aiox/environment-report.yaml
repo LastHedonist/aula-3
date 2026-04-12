@@ -1,0 +1,44 @@
+generated_at: "2026-04-12T00:00:00Z"
+project:
+  name: aula-3
+  path: /Users/tfreitas/cohort-turma3/projetos/aulacohort3
+  github_url: https://github.com/LastHedonist/aula-3
+  github_user: LastHedonist
+  git_initialized: true
+  initial_commit: true
+
+os:
+  platform: darwin
+  arch: arm64
+  version: "25.4.0"
+  package_manager: homebrew
+
+cli_tools:
+  essential:
+    git: "2.50.1"
+    gh: "2.89.0"
+    node: "24.14.1"
+    npm: "11.11.0"
+  infrastructure:
+    supabase: "2.84.2"
+    railway: "4.37.2"
+    docker: NOT_INSTALLED
+  quality:
+    coderabbit: "0.4.1"
+  optional:
+    pnpm: "10.33.0"
+    bun: "1.3.12"
+
+auth:
+  github: authenticated
+  github_account: LastHedonist
+  supabase: pending
+  railway: pending
+  coderabbit: pending
+
+status: BOOTSTRAP_COMPLETE
+notes:
+  - Docker Desktop requires manual installation (brew install --cask docker)
+  - Supabase auth pending (run: supabase login)
+  - Railway auth pending (run: railway login)
+  - CodeRabbit auth pending (run: coderabbit auth login)
