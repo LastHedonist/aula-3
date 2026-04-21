@@ -34,10 +34,6 @@ class OracleScraper(BaseScraper):
 
     @with_retry
     def _fetch_price_list(self) -> dict:
-        resp = requests.get(
-            ORACLE_PRICE_LIST_URL,
-            params={"limit": 2000},
-            timeout=60,
-        )
+        resp = requests.get(ORACLE_PRICE_LIST_URL, timeout=60)
         resp.raise_for_status()
         return resp.json()
