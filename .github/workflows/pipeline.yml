@@ -1,0 +1,52 @@
+name: Pricing Lake Ingestion
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # todo dia às 08:00 UTC (05:00 BRT)
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Data de coleta (YYYY-MM-DD). Padrão: hoje.'
+        required: false
+        default: ''
+
+env:
+  PYTHON_VERSION: '3.12'
+  WORKING_DIR: pricing-lake-ingestion
+
+jobs:
+  ingest:
+    name: Run Pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: ${{ env.WORKING_DIR }}/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pipeline
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        run: |
+          DATE="${{ github.event.inputs.date }}"
+          if [ -z "$DATE" ]; then
+            python main.py
+          else
+            python main.py --date "$DATE"
+          fi

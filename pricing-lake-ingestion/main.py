@@ -12,7 +12,7 @@ from utils.metrics import put_metric
 
 log = get_logger("main")
 
-BUCKET = "pricing-lake"
+BUCKET = "pricing-lake-468103620376"
 PROVIDERS = ["gcp", "aws", "azure", "oracle"]
 SCRAPER_MAP = {
     "aws": AWSScraper,
