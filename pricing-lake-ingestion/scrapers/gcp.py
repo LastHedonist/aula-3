@@ -1,10 +1,11 @@
 import json
+import os
 import requests
 from scrapers.base import BaseScraper
 from utils.retry import with_retry
 
 GCP_API_URL = "https://cloudbilling.googleapis.com/v1/services"
-GCP_API_KEY = None  # Public pricing API — no auth required for list prices
+GCP_API_KEY = os.environ.get("GCP_API_KEY")
 
 
 class GCPScraper(BaseScraper):
@@ -32,9 +33,12 @@ class GCPScraper(BaseScraper):
         self.log.info(f"GCP files prepared: {len(files)}")
         return files
 
+    def _params(self) -> dict:
+        return {"key": GCP_API_KEY} if GCP_API_KEY else {}
+
     @with_retry
     def _list_services(self) -> list[dict]:
-        resp = requests.get(GCP_API_URL, timeout=30)
+        resp = requests.get(GCP_API_URL, params=self._params(), timeout=30)
         resp.raise_for_status()
         return resp.json().get("services", [])
 
@@ -43,7 +47,7 @@ class GCPScraper(BaseScraper):
         skus = []
         url = f"https://cloudbilling.googleapis.com/v1/{service_name}/skus"
         while url:
-            resp = requests.get(url, timeout=30)
+            resp = requests.get(url, params=self._params(), timeout=30)
             resp.raise_for_status()
             data = resp.json()
             skus.extend(data.get("skus", []))
