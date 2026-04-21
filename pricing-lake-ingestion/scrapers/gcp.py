@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import requests
 from scrapers.base import BaseScraper
 from utils.retry import with_retry
@@ -21,6 +22,7 @@ class GCPScraper(BaseScraper):
         for svc in services:
             service_id = svc["serviceId"]
             skus = self._fetch_skus(svc["name"])
+            time.sleep(0.3)  # stay under Cloud Billing API rate limit
             if not skus:
                 continue
             content = json.dumps({

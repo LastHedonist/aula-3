@@ -1,7 +1,7 @@
-import json
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from scrapers.base import BaseScraper
+from scrapers.base import BaseScraper, ScraperResult
+from storage import s3
 from utils.retry import with_retry
 
 AWS_INDEX_URL = "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json"
@@ -14,27 +14,37 @@ class AWSScraper(BaseScraper):
         return "aws"
 
     def fetch(self) -> list[dict]:
-        index = self._fetch_index()
-        offers = index.get("offers", {})
-        self.log.info(f"AWS services in index: {len(offers)}")
+        # Not used — run() is overridden to stream uploads
+        return []
 
-        results = []
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            futures = {
-                executor.submit(self._fetch_service, name, meta): name
-                for name, meta in offers.items()
-            }
-            for future in as_completed(futures):
-                service_name = futures[future]
-                try:
-                    file_dict = future.result()
-                    if file_dict:
-                        results.append(file_dict)
-                except Exception as e:
-                    self.log.warning(f"AWS service failed service={service_name} error={e}")
+    def run(self) -> ScraperResult:
+        """Fetch and upload each service immediately to avoid accumulating GBs in memory."""
+        self.log.info(f"Starting scraper provider={self.provider} date={self.date}")
+        try:
+            index = self._fetch_index()
+            offers = index.get("offers", {})
+            self.log.info(f"AWS services in index: {len(offers)}")
 
-        self.log.info(f"AWS files prepared: {len(results)}")
-        return results
+            uploaded = []
+            with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                futures = {
+                    executor.submit(self._fetch_and_upload, name, meta): name
+                    for name, meta in offers.items()
+                }
+                for future in as_completed(futures):
+                    service_name = futures[future]
+                    try:
+                        path = future.result()
+                        if path:
+                            uploaded.append(path)
+                    except Exception as e:
+                        self.log.warning(f"AWS service failed service={service_name} error={e}")
+
+            self.log.info(f"Completed provider={self.provider} files={len(uploaded)}")
+            return ScraperResult(provider=self.provider, date=self.date, success=True, files_uploaded=uploaded)
+        except Exception as e:
+            self.log.error(f"Scraper failed provider={self.provider} error={e}")
+            return ScraperResult(provider=self.provider, date=self.date, success=False, error=str(e))
 
     @with_retry
     def _fetch_index(self) -> dict:
@@ -43,20 +53,20 @@ class AWSScraper(BaseScraper):
         return resp.json()
 
     @with_retry
-    def _fetch_service(self, service_name: str, meta: dict) -> dict | None:
+    def _fetch_and_upload(self, service_name: str, meta: dict) -> str | None:
         url = meta.get("currentVersionUrl")
         if not url:
             return None
 
-        # AWS index URLs are relative paths
         if url.startswith("/"):
             url = f"https://pricing.us-east-1.amazonaws.com{url}"
 
-        # Prefer JSON format
         if not url.endswith(".json"):
             url = url.replace("/index.csv", "/index.json")
 
         resp = requests.get(url, timeout=120, stream=True)
         resp.raise_for_status()
         content = resp.content
-        return {"filename": f"{service_name}.json", "content": content}
+
+        key = s3.raw_prefix(self.date, self.provider) + f"{service_name}.json"
+        return s3.upload(self.bucket, key, content)
