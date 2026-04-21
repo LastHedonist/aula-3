@@ -5,7 +5,7 @@ from scrapers.base import BaseScraper
 from utils.retry import with_retry
 
 AWS_INDEX_URL = "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json"
-MAX_WORKERS = 10
+MAX_WORKERS = 3
 
 
 class AWSScraper(BaseScraper):
